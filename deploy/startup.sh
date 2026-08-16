@@ -17,7 +17,12 @@ echo "=== [1/2] Moving real sshd to port 2200 ==="
 systemctl disable --now ssh.socket
 sed -i 's/^#\?Port .*/Port 2200/' /etc/ssh/sshd_config
 grep -q '^Port 2200' /etc/ssh/sshd_config || echo 'Port 2200' >> /etc/ssh/sshd_config
-systemctl enable --now ssh.service
+# `enable` (not just `start`) would fail here: this image's ssh.service has
+# no [Install] section since it's meant to be socket-activated only, so
+# `systemctl enable ssh.service` errors out. That's fine - this script
+# re-runs on every boot via GCE's startup-script mechanism, so we don't
+# need systemd to auto-start it; just start it now.
+systemctl restart ssh.service
 
 if ! ss -tlnp | grep -q ':2200'; then
   echo "FATAL: sshd is not listening on 2200 - aborting before exposing the box." >&2
