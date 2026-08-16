@@ -7,13 +7,18 @@ Parses Cowrie (SSH) and Trapster (RDP) JSON-lines logs and reports:
      hints at whether traffic is generic botnet tooling or something more
      targeted. Both come from events Cowrie already emits, so this needs no
      external API or GeoIP-style database.
+  5. Frequency of source IPs, per port. With --geoip, each unique IP is
+     additionally looked up (country/ISP) via the free ip-api.com API - this
+     is the one part of this script that needs network access, so it's
+     opt-in rather than automatic.
 
 Usage:
     python analyze_logs.py \
         --cowrie-log data/cowrie/var/log/cowrie/cowrie.json \
         --trapster-log data/trapster/trapster.json \
         --deployment-marker analysis/deployment_marker.txt \
-        --out-dir analysis
+        --out-dir analysis \
+        --geoip
 
 Note: RDP passwords are NOT plaintext (RDP's NLA/CredSSP protocol never
 sends the password unencrypted). The "password" column for RDP rows is
@@ -28,6 +33,9 @@ from __future__ import annotations
 import argparse
 import csv
 import json
+import time
+import urllib.error
+import urllib.request
 from collections import Counter
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
@@ -168,6 +176,43 @@ def fingerprint_frequency(fingerprints: list[Fingerprint]) -> Counter[tuple[str,
     return counter
 
 
+def src_ip_frequency(attempts: list[Attempt]) -> Counter[tuple[str, str]]:
+    """Count (port, src_ip) over 'connect' events - how many times each IP hit us."""
+    counter: Counter[tuple[str, str]] = Counter()
+    for attempt in attempts:
+        if attempt.event != "connect":
+            continue
+        counter[(attempt.port_label, attempt.src_ip)] += 1
+    return counter
+
+
+def lookup_geoip(ip: str) -> dict[str, str]:
+    """Look up an IP's country/ISP via the free ip-api.com API. Empty dict on any failure."""
+    url = f"http://ip-api.com/json/{ip}?fields=status,country,countryCode,isp,org"
+    try:
+        with urllib.request.urlopen(url, timeout=5) as response:
+            data = json.loads(response.read().decode("utf-8"))
+    except (urllib.error.URLError, TimeoutError, json.JSONDecodeError):
+        return {}
+    if data.get("status") != "success":
+        return {}
+    return {
+        "country": data.get("country", ""),
+        "country_code": data.get("countryCode", ""),
+        "isp": data.get("isp") or data.get("org", ""),
+    }
+
+
+def build_geoip_cache(ips: set[str]) -> dict[str, dict[str, str]]:
+    """Look up each IP once. ip-api.com's free tier allows ~45 requests/minute."""
+    cache: dict[str, dict[str, str]] = {}
+    for i, ip in enumerate(sorted(ips)):
+        if i > 0:
+            time.sleep(1.5)
+        cache[ip] = lookup_geoip(ip)
+    return cache
+
+
 def write_csv(path: Path, header: list[str], rows: list[tuple]) -> None:
     with path.open("w", newline="", encoding="utf-8") as f:
         writer = csv.writer(f)
@@ -180,6 +225,8 @@ def print_summary(
     counts: Counter[tuple[str, int]],
     credentials: Counter[tuple[str, str, str, str]],
     fingerprints: Counter[tuple[str, str]],
+    ip_counts: Counter[tuple[str, str]],
+    geoip_cache: dict[str, dict[str, str]],
 ) -> None:
     print("=== Time to first connection attempt ===")
     for port, delta in sorted(time_to_first.items()):
@@ -198,6 +245,12 @@ def print_summary(
     for (kind, value), count in fingerprints.most_common(20):
         print(f"  [{kind}] {value}: {count}x")
 
+    print("\n=== Top 20 source IPs ===")
+    for (port, ip), count in ip_counts.most_common(20):
+        geo = geoip_cache.get(ip, {})
+        location = f"{geo['country']} ({geo['isp']})" if geo.get("country") else ""
+        print(f"  {port} {ip} {location}: {count}x")
+
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
@@ -205,6 +258,11 @@ def main() -> None:
     parser.add_argument("--trapster-log", type=Path, default=Path("data/trapster/trapster.json"))
     parser.add_argument("--deployment-marker", type=Path, default=Path("analysis/deployment_marker.txt"))
     parser.add_argument("--out-dir", type=Path, default=Path("analysis"))
+    parser.add_argument(
+        "--geoip",
+        action="store_true",
+        help="Look up each unique source IP's country/ISP via ip-api.com (needs network access).",
+    )
     args = parser.parse_args()
 
     deployed_at = load_deployment_time(args.deployment_marker)
@@ -224,8 +282,15 @@ def main() -> None:
     counts = counts_per_24h(attempts, deployed_at)
     credentials = credential_frequency(attempts)
     fingerprint_counts = fingerprint_frequency(fingerprints)
+    ip_counts = src_ip_frequency(attempts)
 
-    print_summary(time_to_first, counts, credentials, fingerprint_counts)
+    geoip_cache: dict[str, dict[str, str]] = {}
+    if args.geoip:
+        unique_ips = {ip for _, ip in ip_counts}
+        print(f"Looking up GeoIP for {len(unique_ips)} unique IP(s) via ip-api.com...")
+        geoip_cache = build_geoip_cache(unique_ips)
+
+    print_summary(time_to_first, counts, credentials, fingerprint_counts, ip_counts, geoip_cache)
 
     args.out_dir.mkdir(parents=True, exist_ok=True)
     write_csv(
@@ -245,6 +310,21 @@ def main() -> None:
         args.out_dir / "ssh_client_fingerprints.csv",
         ["kind", "value", "count"],
         [(kind, value, count) for (kind, value), count in fingerprint_counts.most_common()],
+    )
+    write_csv(
+        args.out_dir / "source_ips.csv",
+        ["port", "src_ip", "attempts", "country", "country_code", "isp"],
+        [
+            (
+                port,
+                ip,
+                count,
+                geoip_cache.get(ip, {}).get("country", ""),
+                geoip_cache.get(ip, {}).get("country_code", ""),
+                geoip_cache.get(ip, {}).get("isp", ""),
+            )
+            for (port, ip), count in ip_counts.most_common()
+        ],
     )
     print(f"\nCSV reports written to {args.out_dir}/")
 

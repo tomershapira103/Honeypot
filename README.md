@@ -76,14 +76,16 @@ Then check the logs on the VM (`data/cowrie/var/log/cowrie/cowrie.json`, `data/t
 python analysis/analyze_logs.py \
   --cowrie-log data/cowrie/var/log/cowrie/cowrie.json \
   --trapster-log data/trapster/trapster.json \
-  --deployment-marker analysis/deployment_marker.txt
+  --deployment-marker analysis/deployment_marker.txt \
+  --geoip
 ```
 
 Prints, and writes as CSVs:
 
 - **`attempts_per_24h.csv`** — time-to-first-attempt and connection counts bucketed into 24h windows, per port.
 - **`credentials.csv`** — username/password combinations attackers tried, most common first.
-- **`ssh_client_fingerprints.csv`** — the SSH client's raw identification banner (e.g. `SSH-2.0-libssh_0.9.6`) and its [HASSH](https://github.com/salesforce/hassh) key-exchange fingerprint, both taken from events Cowrie already logs. No external API or GeoIP-style database involved - useful for spotting whether traffic is dominated by a handful of generic scanning tools/botnets or something more varied.
+- **`ssh_client_fingerprints.csv`** — the SSH client's raw identification banner (e.g. `SSH-2.0-libssh_0.9.6`) and its [HASSH](https://github.com/salesforce/hassh) key-exchange fingerprint, both taken from events Cowrie already logs - useful for spotting whether traffic is dominated by a handful of generic scanning tools/botnets or something more varied.
+- **`source_ips.csv`** — connection counts per source IP, per port. Pass `--geoip` to also enrich each unique IP with country/ISP via the free [ip-api.com](https://ip-api.com) API (rate-limited to ~1 request/1.5s, so this is the one part of the script that touches the network - omit the flag to stay fully offline).
 
 ## Tearing down
 
@@ -102,6 +104,6 @@ Pulls a reminder to grab the logs first, then deletes the VM, firewall rules, su
 
 Not implemented here, but natural extensions if you want to go further:
 
-- **Geographic/ASN origin of attackers** — GeoIP/ASN lookup on `src_ip`. Needs an external database or API (e.g. MaxMind GeoLite2), which is why it's not included by default.
+- **ASN-level correlation across IPs** (e.g. grouping many source IPs by hosting provider to spot shared scanning infrastructure) — `source_ips.csv` has per-IP ISP/org data from `--geoip`, but nothing aggregates across rows yet.
 - **Correlating IPs with threat-intel feeds** (e.g. AbuseIPDB) — Cowrie has a built-in output plugin for this, just needs an API key.
 - **Post-login attacker behavior** (commands run, malware downloaded) — requires letting some login attempts succeed, which trades off against this project's "always deny" choice of maximizing distinct credentials captured. Best run as a separate instance/config rather than changing the primary one.
