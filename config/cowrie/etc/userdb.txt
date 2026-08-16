@@ -1,0 +1,5 @@
+# Deny every username/password combination.
+# Every attempt is still logged as cowrie.login.failed regardless of this file's
+# content - denying everything just maximizes the number of distinct
+# credentials attackers try, since they never "succeed" and stop.
+*:x:!*

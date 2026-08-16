@@ -1,0 +1,25 @@
+#!/usr/bin/env bash
+# Copy this file to config.sh (gitignored) and fill in your own values.
+# provision.sh and teardown.sh source config.sh - never commit real values here.
+
+# Your GCP project id.
+PROJECT_ID="your-gcp-project-id"
+
+# Region/zone to deploy the VM into.
+REGION="us-central1"
+ZONE="us-central1-a"
+
+# Your current public IP (whatismyip.com or `curl -s ifconfig.me`).
+# Used to restrict the real admin-SSH port (2200) to only you.
+# If your IP changes later, re-run:
+#   gcloud compute firewall-rules update honeypot-allow-admin-ssh \
+#     --source-ranges="<new-ip>/32" --project="$PROJECT_ID"
+OPERATOR_IP="203.0.113.10"
+
+# Names used for the created resources - change if they collide with
+# something you already have.
+VPC_NAME="honeypot-vpc"
+SUBNET_NAME="honeypot-subnet"
+SUBNET_RANGE="10.10.0.0/24"
+INSTANCE_NAME="honeypot-vm"
+MACHINE_TYPE="e2-small"

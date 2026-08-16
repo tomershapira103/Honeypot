@@ -1,0 +1,16 @@
+# Runtime data captured by the honeypots - never publish attacker IPs/creds
+data/
+
+# Deployment-specific config with personal/account info (IP, GCP project ID)
+deploy/config.sh
+
+# Timestamp marker written per-deployment
+analysis/deployment_marker.txt
+
+# Analysis script output
+analysis/*.csv
+
+# Local Python / OS junk
+__pycache__/
+*.pyc
+.DS_Store

@@ -1,0 +1,39 @@
+services:
+  cowrie:
+    image: cowrie/cowrie:latest
+    container_name: honeypot-cowrie
+    restart: unless-stopped
+    ports:
+      # Host 22 is the real target attackers scan for; Cowrie always binds
+      # 2222 inside the container regardless of the published host port.
+      - "22:2222"
+    volumes:
+      # Only our overrides live here (cowrie.cfg, userdb.txt). Cowrie's base
+      # defaults (cowrie.cfg.dist) are loaded from the image's packaged
+      # resources, not from this mounted etc/ dir - despite what the Docker
+      # README says, current Cowrie no longer reads a filesystem copy of it
+      # (see cowrie/core/resources.py: read_data_bytes() uses
+      # importlib.resources, not the etc_path). Our cowrie.cfg (via
+      # get_config_path()'s "etc/cowrie.cfg" lookup) and userdb.txt (via the
+      # honeypot.etc_path setting) ARE read from here as intended.
+      - ./config/cowrie/etc:/cowrie/cowrie-git/etc:ro
+      - ./data/cowrie/var:/cowrie/cowrie-git/var
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+
+  trapster:
+    build:
+      context: https://github.com/0xBallpoint/trapster-community.git#main
+    container_name: honeypot-trapster
+    restart: unless-stopped
+    ports:
+      - "3389:3389"
+    volumes:
+      - ./config/trapster/trapster.conf:/etc/trapster/trapster.conf:ro
+      - ./data/trapster:/var/log/trapster
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
