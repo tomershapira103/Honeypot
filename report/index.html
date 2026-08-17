@@ -1,0 +1,799 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Watching the Internet Knock</title>
+<style>
+  :root {
+    --surface-1:      #fcfcfb;
+    --page:           #f9f9f7;
+    --text-primary:   #0b0b0b;
+    --text-secondary: #52514e;
+    --text-muted:     #898781;
+    --grid:           #e1e0d9;
+    --baseline:       #c3c2b7;
+    --border:         rgba(11,11,11,0.10);
+    --blue:           #2a78d6;
+    --blue-soft:      #cde2fb;
+    --orange:         #eb6834;
+    --orange-soft:    #fbdccb;
+    --aqua:           #1baf7a;
+    --yellow:         #eda100;
+    --magenta:        #e87ba4;
+    --good:           #0ca30c;
+    --critical:       #d03b3b;
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: var(--page);
+    color: var(--text-primary);
+    font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+    font-size: 10.5pt;
+    line-height: 1.5;
+  }
+
+  @page {
+    size: A4;
+    margin: 15mm 16mm 18mm 16mm;
+  }
+
+  .page {
+    background: var(--surface-1);
+    position: relative;
+    page-break-after: always;
+    padding-bottom: 6mm;
+  }
+  .page:last-child { page-break-after: avoid; }
+
+  .kicker {
+    font-size: 8.5pt;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    font-weight: 600;
+    margin: 0 0 4mm 0;
+  }
+
+  h1 {
+    font-size: 21pt;
+    line-height: 1.18;
+    margin: 0 0 3mm 0;
+    letter-spacing: -0.01em;
+  }
+  h2 {
+    font-size: 15pt;
+    margin: 0 0 4mm 0;
+    letter-spacing: -0.005em;
+    border-bottom: 2px solid var(--text-primary);
+    padding-bottom: 2.5mm;
+  }
+  h3 {
+    font-size: 11pt;
+    margin: 6mm 0 2.5mm 0;
+    color: var(--text-primary);
+  }
+  p { margin: 0 0 3mm 0; }
+  .lede {
+    font-size: 12pt;
+    color: var(--text-secondary);
+    max-width: 145mm;
+  }
+  ul, ol { margin: 0 0 3mm 0; padding-left: 4.5mm; }
+  li { margin-bottom: 1.6mm; }
+  strong { font-weight: 650; }
+  code {
+    font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+    font-size: 9pt;
+    background: #f0efec;
+    padding: 0.5px 4px;
+    border-radius: 3px;
+  }
+  a { color: var(--blue); text-decoration: none; }
+
+  .footer-bar {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    display: flex;
+    justify-content: space-between;
+    font-size: 7.5pt;
+    color: var(--text-muted);
+    border-top: 1px solid var(--grid);
+    padding-top: 2mm;
+  }
+
+  /* ---------- Cover page ---------- */
+  .cover {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    min-height: 255mm;
+  }
+  .cover-top { margin-top: 10mm; }
+  .cover-badge {
+    display: inline-block;
+    font-size: 8pt;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--blue);
+    background: var(--blue-soft);
+    padding: 2mm 3.5mm;
+    border-radius: 20px;
+    margin-bottom: 6mm;
+  }
+  .cover h1 {
+    font-size: 30pt;
+    max-width: 150mm;
+    margin-bottom: 5mm;
+  }
+  .cover .lede { font-size: 13pt; max-width: 140mm; }
+  .cover-meta {
+    margin-top: 10mm;
+    font-size: 9pt;
+    color: var(--text-secondary);
+    display: flex;
+    gap: 8mm;
+  }
+  .cover-meta div strong { display: block; color: var(--text-primary); font-size: 10pt; }
+
+  .headline-stats {
+    display: flex;
+    gap: 6mm;
+    margin-top: 12mm;
+  }
+  .headline-stat {
+    flex: 1;
+    border-top: 3px solid var(--blue);
+    padding-top: 3mm;
+  }
+  .headline-stat .num {
+    font-size: 22pt;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    line-height: 1;
+  }
+  .headline-stat .label {
+    font-size: 8.5pt;
+    color: var(--text-secondary);
+    margin-top: 1.5mm;
+  }
+  .headline-stat.orange { border-top-color: var(--orange); }
+  .headline-stat.aqua { border-top-color: var(--aqua); }
+
+  .cover-architecture {
+    margin-top: 12mm;
+  }
+
+  /* ---------- stat tiles ---------- */
+  .stat-row { display: flex; gap: 6mm; margin: 4mm 0 6mm 0; }
+  .stat-tile {
+    flex: 1;
+    background: var(--page);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 5mm;
+  }
+  .stat-tile .tile-label {
+    font-size: 8.5pt;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 2mm;
+  }
+  .stat-tile .tile-value {
+    font-size: 19pt;
+    font-weight: 700;
+    line-height: 1;
+  }
+  .stat-tile .tile-value.blue { color: var(--blue); }
+  .stat-tile .tile-value.orange { color: var(--orange); }
+  .stat-tile .tile-sub {
+    font-size: 8.5pt;
+    color: var(--text-muted);
+    margin-top: 2mm;
+  }
+
+  /* ---------- callout box ---------- */
+  .callout {
+    background: var(--blue-soft);
+    border-left: 3px solid var(--blue);
+    border-radius: 0 6px 6px 0;
+    padding: 4mm 5mm;
+    margin: 4mm 0;
+    font-size: 9.5pt;
+  }
+  .callout .callout-label {
+    font-size: 8pt;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--blue);
+    margin-bottom: 1.5mm;
+  }
+
+  .caveat {
+    background: #f0efec;
+    border-left: 3px solid var(--text-muted);
+    border-radius: 0 6px 6px 0;
+    padding: 4mm 5mm;
+    margin: 4mm 0;
+    font-size: 9pt;
+    color: var(--text-secondary);
+  }
+
+  /* ---------- charts ---------- */
+  .chart-title {
+    font-size: 9.5pt;
+    font-weight: 650;
+    margin-bottom: 1mm;
+  }
+  .chart-caption {
+    font-size: 8pt;
+    color: var(--text-muted);
+    margin-bottom: 3mm;
+  }
+  .hbar-chart { width: 100%; }
+  .hbar-row {
+    display: flex;
+    align-items: center;
+    height: 6.2mm;
+    margin-bottom: 1.4mm;
+    font-size: 8.5pt;
+  }
+  .hbar-name {
+    width: 32mm;
+    flex-shrink: 0;
+    text-align: right;
+    padding-right: 3mm;
+    color: var(--text-secondary);
+    font-family: "SFMono-Regular", Consolas, monospace;
+    font-size: 8pt;
+    overflow: hidden;
+    white-space: nowrap;
+  }
+  .hbar-track {
+    flex: 1;
+    background: transparent;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    position: relative;
+  }
+  .hbar-fill {
+    height: 4.6mm;
+    border-radius: 0 3px 3px 0;
+    display: flex;
+    align-items: center;
+  }
+  .hbar-value {
+    margin-left: 2.5mm;
+    font-weight: 650;
+    font-size: 8pt;
+    color: var(--text-primary);
+    white-space: nowrap;
+  }
+
+  .two-col { display: flex; gap: 8mm; }
+  .two-col > div { flex: 1; }
+
+  table.simple {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 8.7pt;
+    margin: 3mm 0 5mm 0;
+  }
+  table.simple th {
+    text-align: left;
+    font-size: 7.8pt;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--text-muted);
+    border-bottom: 1.5px solid var(--text-primary);
+    padding: 1.8mm 2mm;
+  }
+  table.simple td {
+    padding: 1.8mm 2mm;
+    border-bottom: 1px solid var(--grid);
+    font-family: "SFMono-Regular", Consolas, monospace;
+    font-size: 8.3pt;
+  }
+  table.simple td.num { text-align: right; font-family: inherit; }
+  table.simple tr:last-child td { border-bottom: none; }
+
+  .legend-row { display: flex; gap: 5mm; margin: 2mm 0 4mm 0; font-size: 8pt; color: var(--text-secondary); }
+  .legend-item { display: flex; align-items: center; gap: 1.8mm; }
+  .legend-swatch { width: 8px; height: 8px; border-radius: 2px; display: inline-block; }
+
+  .bigbar-wrap { display: flex; align-items: flex-end; gap: 12mm; margin: 10mm 0 3mm 4mm; }
+  .bigbar-col { display: flex; flex-direction: column; align-items: center; width: 30mm; }
+  .bigbar-value { font-size: 13pt; font-weight: 700; margin-bottom: 1.5mm; }
+  .bigbar-shape { width: 22mm; border-radius: 4px 4px 0 0; }
+  .bigbar-label { font-size: 8.5pt; color: var(--text-secondary); margin-top: 2mm; }
+
+  .kv-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 3mm 8mm; margin: 3mm 0; }
+  .kv-grid .k { font-size: 8.3pt; color: var(--text-secondary); }
+  .kv-grid .v { font-size: 8.3pt; font-weight: 650; font-family: "SFMono-Regular", Consolas, monospace; }
+
+  .takeaway-list { list-style: none; padding: 0; margin: 4mm 0; }
+  .takeaway-list li {
+    display: flex;
+    gap: 4mm;
+    margin-bottom: 4.5mm;
+    align-items: flex-start;
+  }
+  .takeaway-num {
+    flex-shrink: 0;
+    width: 8mm;
+    height: 8mm;
+    border-radius: 50%;
+    background: var(--blue);
+    color: white;
+    font-weight: 700;
+    font-size: 9.5pt;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .takeaway-text strong { display: block; font-size: 10pt; margin-bottom: 0.8mm; }
+  .takeaway-text span { color: var(--text-secondary); font-size: 9pt; }
+</style>
+</head>
+<body>
+
+<!-- ============ PAGE 1 — COVER ============ -->
+<section class="page cover">
+  <div class="cover-top">
+    <div class="cover-badge">Independent security research</div>
+    <h1>Watching the Internet Knock</h1>
+    <p class="lede">A 25-hour SSH &amp; RDP honeypot on a bare public cloud VM — what automated attackers actually try, how fast they find you, and what it reveals about the background noise every exposed server on the internet lives in.</p>
+
+    <div class="headline-stats">
+      <div class="headline-stat">
+        <div class="num">9,808</div>
+        <div class="label">Connection attempts logged in ~25&nbsp;hours</div>
+      </div>
+      <div class="headline-stat orange">
+        <div class="num">17 sec</div>
+        <div class="label">Time from deployment to first RDP probe</div>
+      </div>
+      <div class="headline-stat aqua">
+        <div class="num">201</div>
+        <div class="label">Unique source IPs, 60+ countries</div>
+      </div>
+    </div>
+
+    <div class="cover-architecture">
+      <!-- architecture teaser diagram -->
+      <svg viewBox="0 0 700 150" width="100%" height="150" xmlns="http://www.w3.org/2000/svg" style="margin-top:6mm;">
+        <text x="0" y="16" font-size="9" fill="#898781" font-family="system-ui, sans-serif" letter-spacing="0.06em">DECOY SERVICES — NO REAL BACKEND, NO PATH TO A REAL SHELL</text>
+        <!-- internet node -->
+        <circle cx="55" cy="85" r="30" fill="#f0efec" stroke="#c3c2b7" stroke-width="1.2"/>
+        <text x="55" y="82" font-size="9.5" fill="#0b0b0b" text-anchor="middle" font-weight="600">public</text>
+        <text x="55" y="94" font-size="9.5" fill="#0b0b0b" text-anchor="middle" font-weight="600">internet</text>
+
+        <!-- arrows -->
+        <line x1="85" y1="60" x2="230" y2="35" stroke="#2a78d6" stroke-width="1.6"/>
+        <line x1="85" y1="85" x2="230" y2="85" stroke="#eb6834" stroke-width="1.6"/>
+        <line x1="85" y1="110" x2="230" y2="135" stroke="#898781" stroke-width="1.2" stroke-dasharray="3,2"/>
+
+        <!-- cowrie box -->
+        <rect x="235" y="15" width="200" height="40" rx="6" fill="#cde2fb" stroke="#2a78d6" stroke-width="1.2"/>
+        <text x="335" y="31" font-size="9.5" fill="#0b0b0b" text-anchor="middle" font-weight="650">Cowrie · tcp/22</text>
+        <text x="335" y="44" font-size="8" fill="#52514e" text-anchor="middle">simulated shell, deny-all auth</text>
+
+        <!-- trapster box -->
+        <rect x="235" y="65" width="200" height="40" rx="6" fill="#fbdccb" stroke="#eb6834" stroke-width="1.2"/>
+        <text x="335" y="81" font-size="9.5" fill="#0b0b0b" text-anchor="middle" font-weight="650">Trapster · tcp/3389</text>
+        <text x="335" y="94" font-size="8" fill="#52514e" text-anchor="middle">RDP handshake only, deny-all auth</text>
+
+        <!-- sshd box -->
+        <rect x="235" y="115" width="200" height="34" rx="6" fill="#f0efec" stroke="#898781" stroke-width="1"/>
+        <text x="335" y="131" font-size="8.7" fill="#0b0b0b" text-anchor="middle" font-weight="650">real sshd · tcp/2200</text>
+        <text x="335" y="143" font-size="7.6" fill="#898781" text-anchor="middle">admin-only, via GCP IAP</text>
+
+        <!-- outcome -->
+        <line x1="435" y1="35" x2="560" y2="35" stroke="#c3c2b7" stroke-width="1"/>
+        <line x1="435" y1="85" x2="560" y2="85" stroke="#c3c2b7" stroke-width="1"/>
+        <text x="565" y="38" font-size="8.3" fill="#52514e">always logged, never</text>
+        <text x="565" y="48" font-size="8.3" fill="#52514e">granted a session</text>
+        <text x="565" y="88" font-size="8.3" fill="#52514e">username + NTLMv2</text>
+        <text x="565" y="98" font-size="8.3" fill="#52514e">hash captured only</text>
+      </svg>
+    </div>
+  </div>
+
+  <div class="cover-meta">
+    <div><strong>Tomer Shapira</strong>Author</div>
+    <div><strong>August 2026</strong>Study window: Aug 16–17, 2026 (UTC)</div>
+    <div><strong>GCP e2-small · Debian 12</strong>Cowrie (SSH) + Trapster (RDP)</div>
+    <div><strong>github.com/tomershapira103/Honeypot</strong>Code &amp; full methodology</div>
+  </div>
+</section>
+
+<!-- ============ PAGE 2 — MOTIVATION ============ -->
+<section class="page">
+  <div class="kicker">01 · Motivation</div>
+  <h2>Why point a decoy at the open internet?</h2>
+
+  <p class="lede">Any server with a public IP starts receiving unsolicited connection attempts almost immediately — long before a human ever finds it. That traffic is usually invisible: it lives in auth logs nobody reads, on production boxes where "someone tried to log in and failed" isn't interesting enough to investigate. This project made that traffic the entire point.</p>
+
+  <p>I stood up a small cloud VM running two protocol-level decoys — nothing behind them, no real filesystem, no real remote desktop, no path to an actual shell — and let the internet find it on its own. Every connection, every credential guess, and every client fingerprint was logged and analyzed to answer four concrete questions:</p>
+
+  <div class="takeaway-list">
+    <li>
+      <div class="takeaway-num">1</div>
+      <div class="takeaway-text"><strong>How long until first contact?</strong><span>From the moment the VM goes live, how many seconds or hours pass before the first scanner finds each open port?</span></div>
+    </li>
+    <li>
+      <div class="takeaway-num">2</div>
+      <div class="takeaway-text"><strong>How much traffic, sustained over time?</strong><span>Is this a one-time sweep or a continuous, ongoing background hum of scanning?</span></div>
+    </li>
+    <li>
+      <div class="takeaway-num">3</div>
+      <div class="takeaway-text"><strong>What credentials do attackers actually try?</strong><span>Which usernames and passwords dominate real-world brute-force dictionaries in 2026?</span></div>
+    </li>
+    <li>
+      <div class="takeaway-num">4</div>
+      <div class="takeaway-text"><strong>What's doing the knocking?</strong><span>Generic botnet tooling, purpose-built scanners, or something closer to a human with a terminal?</span></div>
+    </li>
+  </div>
+
+  <div class="callout">
+    <div class="callout-label">Why this matters</div>
+    Every one of these connection attempts is aimed at the same numbers ports on <em>every</em> internet-facing box, all the time. Seeing the shape of that traffic — its speed, its volume, its credential lists — is directly useful for anyone hardening a server, sizing an intrusion-detection baseline, or just deciding whether "nobody would bother attacking my tiny VM" is a safe assumption. (It isn't.)
+  </div>
+
+  <h3>Ground rules for the study</h3>
+  <ul>
+    <li><strong>Protocol-level decoys only.</strong> Cowrie presents a simulated Linux shell over SSH; Trapster completes just enough of the RDP handshake to capture a username. Neither has a real backend — an attacker can never get further than a login prompt.</li>
+    <li><strong>Deny-all authentication.</strong> Every credential is rejected, on both services, always. This maximizes the number of distinct guesses captured, at the cost of never observing post-login behavior (see Limitations, p.10).</li>
+    <li><strong>Admin access preserved separately.</strong> Real SSH access is moved to a non-standard port, reachable only through an authenticated cloud tunnel — never exposed to the ports under study.</li>
+  </ul>
+
+  <div class="footer-bar"><span>Watching the Internet Knock — SSH/RDP Honeypot Study</span><span>2</span></div>
+</section>
+
+<!-- ============ PAGE 3 — ARCHITECTURE ============ -->
+<section class="page">
+  <div class="kicker">02 · Architecture &amp; Methodology</div>
+  <h2>How the decoy was built</h2>
+
+  <p>The setup runs on a single small VM in Google Cloud, provisioned by an idempotent shell script that creates an isolated VPC, opens exactly the ports under study, and deploys two containerized honeypots.</p>
+
+  <svg viewBox="0 0 720 260" width="100%" height="260" xmlns="http://www.w3.org/2000/svg" style="margin: 4mm 0;">
+    <!-- Internet -->
+    <rect x="0" y="95" width="90" height="60" rx="8" fill="#f0efec" stroke="#c3c2b7" stroke-width="1.2"/>
+    <text x="45" y="121" font-size="10" fill="#0b0b0b" text-anchor="middle" font-weight="650">Public</text>
+    <text x="45" y="134" font-size="10" fill="#0b0b0b" text-anchor="middle" font-weight="650">internet</text>
+    <text x="45" y="148" font-size="7.5" fill="#898781" text-anchor="middle">0.0.0.0/0</text>
+
+    <!-- arrows to VM boundary -->
+    <line x1="90" y1="115" x2="150" y2="60"  stroke="#2a78d6" stroke-width="1.6"/>
+    <text x="95" y="80" font-size="8" fill="#2a78d6" font-weight="650">tcp/22</text>
+    <line x1="90" y1="125" x2="150" y2="125" stroke="#eb6834" stroke-width="1.6"/>
+    <text x="95" y="120" font-size="8" fill="#eb6834" font-weight="650">tcp/3389</text>
+    <line x1="90" y1="135" x2="150" y2="195" stroke="#898781" stroke-width="1.2" stroke-dasharray="3,2"/>
+    <text x="93" y="175" font-size="7.3" fill="#898781">tcp/2200 (IAP only)</text>
+
+    <!-- VM boundary -->
+    <rect x="150" y="20" width="420" height="220" rx="10" fill="none" stroke="#0b0b0b" stroke-width="1.3" stroke-dasharray="4,3"/>
+    <text x="164" y="14" font-size="8.3" fill="#52514e" font-weight="650">GCP VM — e2-small, Debian 12 — no service account, no API scopes</text>
+
+    <!-- cowrie -->
+    <rect x="170" y="42" width="190" height="52" rx="6" fill="#cde2fb" stroke="#2a78d6" stroke-width="1.2"/>
+    <text x="265" y="63" font-size="9.5" text-anchor="middle" font-weight="650">Cowrie container</text>
+    <text x="265" y="76" font-size="8" fill="#525142" text-anchor="middle">simulated SSH shell</text>
+    <text x="265" y="87" font-size="8" fill="#52514e" text-anchor="middle">userdb.txt → reject everything</text>
+
+    <!-- trapster -->
+    <rect x="170" y="106" width="190" height="52" rx="6" fill="#fbdccb" stroke="#eb6834" stroke-width="1.2"/>
+    <text x="265" y="127" font-size="9.5" text-anchor="middle" font-weight="650">Trapster container</text>
+    <text x="265" y="140" font-size="8" fill="#52514e" text-anchor="middle">RDP module only (all others off)</text>
+    <text x="265" y="151" font-size="8" fill="#52514e" text-anchor="middle">always replies STATUS_LOGON_FAILURE</text>
+
+    <!-- real sshd -->
+    <rect x="170" y="182" width="190" height="44" rx="6" fill="#fcfcfb" stroke="#898781" stroke-width="1"/>
+    <text x="265" y="201" font-size="9" text-anchor="middle" font-weight="650">real sshd — port 2200</text>
+    <text x="265" y="213" font-size="7.6" fill="#898781" text-anchor="middle">moved off :22 by the boot script</text>
+
+    <!-- log store -->
+    <rect x="390" y="74" width="160" height="126" rx="6" fill="#fcfcfb" stroke="#c3c2b7" stroke-width="1"/>
+    <text x="470" y="93" font-size="9" text-anchor="middle" font-weight="650">JSON-lines logs</text>
+    <text x="470" y="112" font-size="7.8" fill="#52514e" text-anchor="middle">cowrie.json</text>
+    <text x="470" y="126" font-size="7.8" fill="#52514e" text-anchor="middle">trapster.json</text>
+    <line x1="410" y1="136" x2="530" y2="136" stroke="#e1e0d9" stroke-width="1"/>
+    <text x="470" y="152" font-size="7.5" fill="#898781" text-anchor="middle">connects, login attempts,</text>
+    <text x="470" y="163" font-size="7.5" fill="#898781" text-anchor="middle">client banners, HASSH keys</text>
+    <text x="470" y="181" font-size="7.3" fill="#898781" text-anchor="middle" font-style="italic">no packet payloads / no PII</text>
+
+    <line x1="360" y1="68" x2="390" y2="115" stroke="#2a78d6" stroke-width="1.2"/>
+    <line x1="360" y1="132" x2="390" y2="132" stroke="#eb6834" stroke-width="1.2"/>
+
+    <!-- IAP tunnel note -->
+    <rect x="600" y="182" width="120" height="44" rx="6" fill="#f0efec" stroke="#c3c2b7" stroke-width="1"/>
+    <text x="660" y="201" font-size="8.3" text-anchor="middle" font-weight="650">Admin (me)</text>
+    <text x="660" y="213" font-size="7.3" fill="#898781" text-anchor="middle">via IAP + Google IAM</text>
+    <line x1="360" y1="204" x2="600" y2="204" stroke="#898781" stroke-width="1" stroke-dasharray="3,2"/>
+  </svg>
+
+  <p style="font-size:8.6pt; color:var(--text-muted); margin-top:-2mm;">Every resource-creation step in the provisioning script is idempotent, so a partial run can simply be re-run. Analysis is a separate, offline step run against the downloaded logs.</p>
+
+  <h3>Design choices worth calling out</h3>
+  <ul>
+    <li><strong>Real admin access never touches the studied ports.</strong> SSH for administration lives on port 2200, reachable only through Google's Identity-Aware Proxy — authenticated by IAM identity, not source IP, so it keeps working from anywhere with nothing to allowlist.</li>
+    <li><strong>Blast radius is capped at the VM.</strong> The instance runs with <code>--no-service-account --no-scopes</code>, so even a hypothetical full compromise of the box has no credentials to reach any other cloud resource.</li>
+    <li><strong>RDP passwords are never actually plaintext.</strong> RDP's NLA/CredSSP handshake encrypts the password before it's sent. Trapster captures a plaintext <em>username</em> pre-TLS, plus (if the client completes NLA) a <strong>NetNTLMv2 hash</strong> — offline-crackable, but not a readable password. The analysis keeps these labeled and separate from SSH's genuinely plaintext credentials.</li>
+  </ul>
+
+  <div class="kv-grid" style="margin-top:5mm;">
+    <div class="k">Deployed</div><div class="v">2026-08-16 19:34:45 UTC</div>
+    <div class="k">Observation window</div><div class="v">~25 hours</div>
+    <div class="k">SSH honeypot</div><div class="v">Cowrie (medium-interaction)</div>
+    <div class="k">RDP honeypot</div><div class="v">Trapster Community (RDP module)</div>
+    <div class="k">VM</div><div class="v">GCP e2-small, Debian 12</div>
+    <div class="k">Analysis</div><div class="v">analysis/analyze_logs.py (Python)</div>
+  </div>
+
+  <div class="footer-bar"><span>Watching the Internet Knock — SSH/RDP Honeypot Study</span><span>3</span></div>
+</section>
+
+<!-- ============ PAGE 4 — SPEED & VOLUME ============ -->
+<section class="page">
+  <div class="kicker">03 · Results — Speed &amp; Volume</div>
+  <h2>The internet found it before I'd finished deploying</h2>
+
+  <p class="lede">The most immediate finding wasn't a credential or a client fingerprint — it was the clock. Mass scanning of the public IPv4 space is fast enough that "newly provisioned" and "already being probed" are nearly the same moment.</p>
+
+  <div class="stat-row">
+    <div class="stat-tile">
+      <div class="tile-label">First SSH (:22) probe</div>
+      <div class="tile-value blue">4h 27m</div>
+      <div class="tile-sub">after the VM went live</div>
+    </div>
+    <div class="stat-tile">
+      <div class="tile-label">First RDP (:3389) probe</div>
+      <div class="tile-value orange">17 seconds</div>
+      <div class="tile-sub">after the VM went live</div>
+    </div>
+  </div>
+
+  <div class="callout">
+    <div class="callout-label">Reading the gap</div>
+    RDP was found essentially instantly — consistent with continuous, IPv4-space-wide scanning services (some of the earliest RDP connections in the logs trace back to known internet-scanning operators). SSH took over four hours, likely because port 22 is scanned by a much larger and more varied population of tools with different sweep schedules — the first hit is closer to "whichever scanner's rotation reaches this /24 next" than a fixed latency.
+  </div>
+
+  <div class="footer-bar"><span>Watching the Internet Knock — SSH/RDP Honeypot Study</span><span>4</span></div>
+</section>
+
+<!-- ============ PAGE 4b — VOLUME DETAIL ============ -->
+<section class="page">
+  <div class="kicker">03 · Results — Speed &amp; Volume (continued)</div>
+  <h2>Total volume over the ~25-hour window</h2>
+
+  <div class="bigbar-wrap">
+    <div class="bigbar-col">
+      <div class="bigbar-value">9,120</div>
+      <div class="bigbar-shape" style="height:38mm; background:var(--blue);"></div>
+      <div class="bigbar-label">SSH (:22)<br>connection attempts</div>
+    </div>
+    <div class="bigbar-col">
+      <div class="bigbar-value">688</div>
+      <div class="bigbar-shape" style="height:2.9mm; background:var(--orange);"></div>
+      <div class="bigbar-label">RDP (:3389)<br>connection attempts</div>
+    </div>
+  </div>
+  <p style="font-size:8.3pt; color:var(--text-muted); text-align:center; margin-top:-1mm;">SSH received <strong>~13×</strong> more traffic than RDP — port 22 is simply a far more heavily scanned target on the open internet.</p>
+
+  <h3>Day-by-day breakdown</h3>
+  <table class="simple">
+    <tr><th>Port</th><th>First 24h</th><th>Remaining ~53 min of the window</th><th>Total</th><th>Unique source IPs</th></tr>
+    <tr><td>22/ssh</td><td class="num">9,075</td><td class="num">45</td><td class="num"><strong>9,120</strong></td><td class="num">143</td></tr>
+    <tr><td>3389/rdp</td><td class="num">612</td><td class="num">76</td><td class="num"><strong>688</strong></td><td class="num">60</td></tr>
+  </table>
+  <p style="font-size:8.3pt; color:var(--text-muted); margin-top:-3mm;">The RDP uptick in the final, partial window traces mostly to a single aggressive source performing a real credential-guessing run (see p.6) — a reminder that short observation windows can be skewed by one active actor.</p>
+
+  <h3>Traffic is concentrated, not evenly spread</h3>
+  <div class="two-col">
+    <div>
+      <p style="font-size:9pt;">On SSH, the busiest <strong>10 of 143</strong> unique source IPs (7% of sources) account for <strong>66%</strong> of all traffic. Averaged across all sources, each SSH IP made ~64 attempts — this isn't 143 people trying once each, it's a smaller number of persistent, repeat-hitting scanners.</p>
+    </div>
+    <div>
+      <p style="font-size:9pt;">On RDP, it's even more concentrated: a <strong>single source IP</strong> (UK-hosted) accounts for <strong>44.5%</strong> of all RDP traffic on its own, and the top 3 IPs cover <strong>70%</strong> — RDP scanning in this window was dominated by a handful of determined actors rather than broad, diffuse noise.</p>
+    </div>
+  </div>
+
+  <div class="footer-bar"><span>Watching the Internet Knock — SSH/RDP Honeypot Study</span><span>5</span></div>
+</section>
+
+<!-- ============ PAGE 5 — CREDENTIALS ============ -->
+<section class="page">
+  <div class="kicker">04 · Results — Credentials</div>
+  <h2>What attackers type when they think no one's watching</h2>
+
+  <p class="lede">Across the SSH honeypot, attackers tried <strong>3,901 distinct username/password combinations</strong> over <strong>8,928 login attempts</strong> — an average of roughly 2.3 tries per unique pair, consistent with automated dictionary attacks rather than manual guessing.</p>
+
+  <div class="two-col">
+    <div>
+      <div class="chart-title">Top 10 usernames tried (SSH)</div>
+      <div class="chart-caption">by total login attempts, all passwords combined</div>
+      <div class="hbar-chart">
+        <div class="hbar-row"><div class="hbar-name">root</div><div class="hbar-track"><div class="hbar-fill" style="width:100%; background:var(--blue);"></div><div class="hbar-value">3,058</div></div></div>
+        <div class="hbar-row"><div class="hbar-name">ubuntu</div><div class="hbar-track"><div class="hbar-fill" style="width:14.9%; background:var(--blue);"></div><div class="hbar-value">456</div></div></div>
+        <div class="hbar-row"><div class="hbar-name">admin</div><div class="hbar-track"><div class="hbar-fill" style="width:11.8%; background:var(--blue);"></div><div class="hbar-value">361</div></div></div>
+        <div class="hbar-row"><div class="hbar-name">user</div><div class="hbar-track"><div class="hbar-fill" style="width:11.4%; background:var(--blue);"></div><div class="hbar-value">350</div></div></div>
+        <div class="hbar-row"><div class="hbar-name">debian</div><div class="hbar-track"><div class="hbar-fill" style="width:7.2%; background:var(--blue);"></div><div class="hbar-value">220</div></div></div>
+        <div class="hbar-row"><div class="hbar-name">deploy</div><div class="hbar-track"><div class="hbar-fill" style="width:4.9%; background:var(--blue);"></div><div class="hbar-value">149</div></div></div>
+        <div class="hbar-row"><div class="hbar-name">test</div><div class="hbar-track"><div class="hbar-fill" style="width:4.3%; background:var(--blue);"></div><div class="hbar-value">133</div></div></div>
+        <div class="hbar-row"><div class="hbar-name">dev</div><div class="hbar-track"><div class="hbar-fill" style="width:2.6%; background:var(--blue);"></div><div class="hbar-value">78</div></div></div>
+        <div class="hbar-row"><div class="hbar-name">pi</div><div class="hbar-track"><div class="hbar-fill" style="width:1.9%; background:var(--blue);"></div><div class="hbar-value">57</div></div></div>
+        <div class="hbar-row"><div class="hbar-name">claude</div><div class="hbar-track"><div class="hbar-fill" style="width:1.8%; background:var(--blue);"></div><div class="hbar-value">56</div></div></div>
+      </div>
+    </div>
+    <div>
+      <div class="chart-title">Top 10 passwords tried (SSH)</div>
+      <div class="chart-caption">by total login attempts, all usernames combined</div>
+      <div class="hbar-chart">
+        <div class="hbar-row"><div class="hbar-name">123456</div><div class="hbar-track"><div class="hbar-fill" style="width:100%; background:var(--orange);"></div><div class="hbar-value">525</div></div></div>
+        <div class="hbar-row"><div class="hbar-name">123</div><div class="hbar-track"><div class="hbar-fill" style="width:51.2%; background:var(--orange);"></div><div class="hbar-value">269</div></div></div>
+        <div class="hbar-row"><div class="hbar-name">1234</div><div class="hbar-track"><div class="hbar-fill" style="width:39.0%; background:var(--orange);"></div><div class="hbar-value">205</div></div></div>
+        <div class="hbar-row"><div class="hbar-name">password</div><div class="hbar-track"><div class="hbar-fill" style="width:31.8%; background:var(--orange);"></div><div class="hbar-value">167</div></div></div>
+        <div class="hbar-row"><div class="hbar-name">1</div><div class="hbar-track"><div class="hbar-fill" style="width:30.5%; background:var(--orange);"></div><div class="hbar-value">160</div></div></div>
+        <div class="hbar-row"><div class="hbar-name">12345678</div><div class="hbar-track"><div class="hbar-fill" style="width:28.2%; background:var(--orange);"></div><div class="hbar-value">148</div></div></div>
+        <div class="hbar-row"><div class="hbar-name">root</div><div class="hbar-track"><div class="hbar-fill" style="width:24.4%; background:var(--orange);"></div><div class="hbar-value">128</div></div></div>
+        <div class="hbar-row"><div class="hbar-name">12345</div><div class="hbar-track"><div class="hbar-fill" style="width:21.9%; background:var(--orange);"></div><div class="hbar-value">115</div></div></div>
+        <div class="hbar-row"><div class="hbar-name">P@ssw0rd</div><div class="hbar-track"><div class="hbar-fill" style="width:14.5%; background:var(--orange);"></div><div class="hbar-value">76</div></div></div>
+        <div class="hbar-row"><div class="hbar-name">123456789</div><div class="hbar-track"><div class="hbar-fill" style="width:13.3%; background:var(--orange);"></div><div class="hbar-value">70</div></div></div>
+      </div>
+    </div>
+  </div>
+
+  <p style="font-size:8.6pt; color:var(--text-muted); margin-top:1mm;"><strong>1 in 3</strong> SSH login attempts (34.3%) used the username <code>root</code> — by far the single most-targeted account on any exposed Linux box.</p>
+
+  <div class="callout">
+    <div class="callout-label">Unexpected find — the dictionaries have kept up with 2026</div>
+    Buried in the username list: <code>claude</code> (56 attempts), <code>openclaw</code> (38), and <code>codex</code> (12) — all names associated with AI coding agents / AI-assisted dev tooling. Generic brute-force wordlists are evidently being refreshed to guess at accounts an "AI dev box" might plausibly have, right alongside classics like <code>ubuntu</code> and <code>admin</code>.
+  </div>
+
+  <h3>RDP: usernames without passwords</h3>
+  <p style="font-size:9pt;">RDP's NLA/CredSSP handshake never sends a readable password. Trapster captured <strong>330 unique usernames</strong> across <strong>878 login-stage events</strong> — but the large majority are single pre-TLS username probes with no follow-through (top guesses: <code>test</code>, <code>workgroup</code>, <code>win-rdp01</code>, <code>hello</code>). Only <strong>one source IP</strong> completed full NLA negotiation and ran an actual brute-force, submitting <strong>administrator</strong> against 13 distinct guessed passwords as recoverable NetNTLMv2 hashes — everything else in the RDP data is reconnaissance, not a real login attempt.</p>
+
+  <div class="footer-bar"><span>Watching the Internet Knock — SSH/RDP Honeypot Study</span><span>6</span></div>
+</section>
+
+<!-- ============ PAGE 6 — ORIGINS ============ -->
+<section class="page">
+  <div class="kicker">05 · Results — Where the Traffic Came From</div>
+  <h2>A global footprint, but a concentrated core</h2>
+
+  <p class="lede">Source IPs geolocated to <strong>60+ countries</strong> — but the raw country ranking is dominated by a small number of hosting providers running many scanner instances from adjacent IP blocks, not by broad, organic geographic spread.</p>
+
+  <div class="chart-title">Connection attempts by country of origin</div>
+  <div class="chart-caption">combined SSH + RDP, top 8 countries + all others (aggregated by IP geolocation)</div>
+  <div class="hbar-chart" style="margin-bottom:5mm;">
+    <div class="hbar-row"><div class="hbar-name">Netherlands</div><div class="hbar-track"><div class="hbar-fill" style="width:100%; background:var(--aqua);"></div><div class="hbar-value">5,004</div></div></div>
+    <div class="hbar-row"><div class="hbar-name">Isle of Man</div><div class="hbar-track"><div class="hbar-fill" style="width:22.4%; background:var(--aqua);"></div><div class="hbar-value">1,121</div></div></div>
+    <div class="hbar-row"><div class="hbar-name">United States</div><div class="hbar-track"><div class="hbar-fill" style="width:13.9%; background:var(--aqua);"></div><div class="hbar-value">694</div></div></div>
+    <div class="hbar-row"><div class="hbar-name">Italy</div><div class="hbar-track"><div class="hbar-fill" style="width:8.8%; background:var(--aqua);"></div><div class="hbar-value">442</div></div></div>
+    <div class="hbar-row"><div class="hbar-name">China</div><div class="hbar-track"><div class="hbar-fill" style="width:7.2%; background:var(--aqua);"></div><div class="hbar-value">361</div></div></div>
+    <div class="hbar-row"><div class="hbar-name">United Kingdom</div><div class="hbar-track"><div class="hbar-fill" style="width:6.3%; background:var(--aqua);"></div><div class="hbar-value">315</div></div></div>
+    <div class="hbar-row"><div class="hbar-name">India</div><div class="hbar-track"><div class="hbar-fill" style="width:4.5%; background:var(--aqua);"></div><div class="hbar-value">224</div></div></div>
+    <div class="hbar-row"><div class="hbar-name">South Korea</div><div class="hbar-track"><div class="hbar-fill" style="width:3.3%; background:var(--aqua);"></div><div class="hbar-value">166</div></div></div>
+    <div class="hbar-row"><div class="hbar-name">All others (50+)</div><div class="hbar-track"><div class="hbar-fill" style="width:29.6%; background:#c9c8c1;"></div><div class="hbar-value">1,481</div></div></div>
+  </div>
+
+  <div class="callout">
+    <div class="callout-label">The Netherlands number is three hosting accounts, not a country trend</div>
+    93% of the Netherlands total (4,668 of 5,004 attempts) comes from just <strong>two ISPs</strong> running clusters of IPs in the same block: six co-located addresses from one provider and three from another, each individually making 400–780 attempts. Geolocation tells you where the server rack is, not who's operating it — treat country-level rankings as an infrastructure map, not an attacker demographic.
+  </div>
+
+  <h3>A quieter signal: legitimate internet-wide scanners</h3>
+  <p style="font-size:9pt;">Some of the traffic isn't attack traffic at all. IP ranges belonging to <strong>Censys</strong> and known internet-mapping infrastructure appear in both the SSH and RDP logs, and one SSH connection carried the client string <code>MGLNDD_&lt;ip&gt;_22</code> — a signature associated with commercial internet-scanning platforms. This is a useful reminder when reading any honeypot's totals: a meaningful slice of "attacker" traffic is research/attack-surface-mapping scanners cataloguing the internet, indistinguishable at the network layer from hostile recon.</p>
+
+  <h3 style="margin-top:6mm;">A note on what's <em>not</em> published here</h3>
+  <p style="font-size:9pt; color:var(--text-secondary);">Individual source IP addresses are deliberately omitted from this report (consistent with how the underlying project handles this data — raw attacker IPs and credentials are excluded from version control by design). Everything above is aggregated to the country/ISP level, which preserves the pattern without publishing a list of specific hosts.</p>
+
+  <div class="footer-bar"><span>Watching the Internet Knock — SSH/RDP Honeypot Study</span><span>7</span></div>
+</section>
+
+<!-- ============ PAGE 7 — TOOLING ============ -->
+<section class="page">
+  <div class="kicker">06 · Results — What's Doing the Knocking</div>
+  <h2>Almost none of this is a human at a keyboard</h2>
+
+  <p class="lede">Cowrie logs each SSH client's raw identification banner and a HASSH fingerprint derived from its key-exchange proposal — together, a good proxy for "what software is on the other end of this connection."</p>
+
+  <div class="chart-title">SSH client tooling, by category (8,878 fingerprinted connections)</div>
+  <div class="chart-caption">grouped from raw client version banners captured by Cowrie</div>
+  <div class="hbar-chart" style="margin: 3mm 0 5mm 0;">
+    <div class="hbar-row"><div class="hbar-name">Generic Go binary</div><div class="hbar-track"><div class="hbar-fill" style="width:100%; background:var(--blue);"></div><div class="hbar-value">7,348 · 82.8%</div></div></div>
+    <div class="hbar-row"><div class="hbar-name">libssh scripts</div><div class="hbar-track"><div class="hbar-fill" style="width:20.4%; background:var(--orange);"></div><div class="hbar-value">1,497 · 16.9%</div></div></div>
+    <div class="hbar-row"><div class="hbar-name">Real SSH clients</div><div class="hbar-track"><div class="hbar-fill" style="width:0.3%; background:var(--aqua); min-width:2px;"></div><div class="hbar-value">20 · 0.23%</div></div></div>
+    <div class="hbar-row"><div class="hbar-name">Known scanners</div><div class="hbar-track"><div class="hbar-fill" style="width:0.1%; background:var(--yellow); min-width:2px;"></div><div class="hbar-value">7 · 0.08%</div></div></div>
+    <div class="hbar-row"><div class="hbar-name">Wrong protocol</div><div class="hbar-track"><div class="hbar-fill" style="width:0.1%; background:var(--magenta); min-width:2px;"></div><div class="hbar-value">6 · 0.07%</div></div></div>
+  </div>
+
+  <div class="two-col">
+    <div>
+      <p style="font-size:8.8pt;"><strong style="color:var(--blue);">Generic Go binary (82.8%)</strong> — connections announcing themselves simply as <code>SSH-2.0-Go</code>, i.e. built with Go's standard SSH library and nothing else identifying. This is the signature of custom-compiled scanning/credential-stuffing tools, likely botnet agents — by far the dominant source of traffic. Four distinct HASSH key-exchange fingerprints appear within this banner alone, meaning it's several different tools or campaigns, not one.</p>
+      <p style="font-size:8.8pt;"><strong style="color:var(--orange);">libssh scripts (16.9%)</strong> — almost entirely one version (<code>libssh_0.9.6</code>), the library behind countless small brute-force scripts distributed online. Its near-total dominance within this slice suggests one popular script or tutorial being run at scale.</p>
+    </div>
+    <div>
+      <p style="font-size:8.8pt;"><strong style="color:var(--aqua);">Real interactive clients (0.23%)</strong> — <code>paramiko</code>, <code>PuTTY</code>, <code>russh</code>, one legacy <code>OpenSSH</code> — the kind of tooling an actual person or a legitimate automation script would use. Vanishingly rare against this backdrop.</p>
+      <p style="font-size:8.8pt;"><strong style="color:var(--yellow);">Known scanners (0.08%)</strong> — recognizable research/recon tools: <code>ZGrab</code>, <code>Nmap</code>'s SSH algorithm enumerator, <code>Fingerprintx</code>.</p>
+      <p style="font-size:8.8pt;"><strong style="color:var(--magenta);">Wrong protocol (0.07%)</strong> — a handful of connections sent a raw HTTP <code>GET /</code> request, or raw TLS <code>ClientHello</code> bytes, at port 22 — scanners blasting every protocol at every port without bothering to check what's listening.</p>
+    </div>
+  </div>
+
+  <div class="callout">
+    <div class="callout-label">The headline</div>
+    Over <strong>99.9%</strong> of fingerprinted SSH traffic came from generic, non-interactive tooling. In 25 hours, essentially zero traffic looked like "a person opened a terminal and typed <code>ssh</code>." Everything hitting this box was automated — a fair proxy for what any newly provisioned, internet-facing SSH server should expect from minute one.
+  </div>
+
+  <div class="footer-bar"><span>Watching the Internet Knock — SSH/RDP Honeypot Study</span><span>8</span></div>
+</section>
+
+<!-- ============ PAGE 8 — TAKEAWAYS ============ -->
+<section class="page">
+  <div class="kicker">07 · Key Takeaways</div>
+  <h2>What this changes about how I think about exposure</h2>
+
+  <ol class="takeaway-list" style="list-style:none; padding:0;">
+    <li>
+      <div class="takeaway-num">1</div>
+      <div class="takeaway-text"><strong>"Nobody will find my small server" is false, and fast.</strong><span>RDP was probed 17 seconds after the VM came online. Any public IP is discovered by continuous internet-wide scanning within minutes to hours — obscurity through a low profile buys you nothing on the timescale of scanning.</span></div>
+    </li>
+    <li>
+      <div class="takeaway-num">2</div>
+      <div class="takeaway-text"><strong>The volume gap between SSH and RDP is real and large.</strong><span>Port 22 saw ~13× the traffic of port 3389 in the same window. If you can only harden or closely monitor one exposed service, SSH is the busier target.</span></div>
+    </li>
+    <li>
+      <div class="takeaway-num">3</div>
+      <div class="takeaway-text"><strong>Default and weak credentials remain the entire attack.</strong><span><code>root</code>/<code>123456</code>-class guesses dominate; there's no sophistication here to defend against — disabling password auth in favor of keys neutralizes nearly all of this traffic in one config change.</span></div>
+    </li>
+    <li>
+      <div class="takeaway-num">4</div>
+      <div class="takeaway-text"><strong>Brute-force wordlists are quietly evolving with the industry.</strong><span>Seeing <code>claude</code>, <code>codex</code>, and <code>openclaw</code> as guessed usernames suggests dictionaries are being refreshed for accounts an "AI-assisted dev box" plausibly has — worth remembering if you name service accounts after the tools running on them.</span></div>
+    </li>
+    <li>
+      <div class="takeaway-num">5</div>
+      <div class="takeaway-text"><strong>Traffic is concentrated, not diffuse.</strong><span>A handful of source IPs and hosting providers account for the majority of attempts on both ports. Rate-limiting or blocking a small number of persistent, repeat offenders would meaningfully cut the noise a real server sees.</span></div>
+    </li>
+    <li>
+      <div class="takeaway-num">6</div>
+      <div class="takeaway-text"><strong>This is almost entirely machine-on-machine.</strong><span>Over 99.9% of fingerprinted SSH clients were generic automated tooling. The mental model of "an attacker" here is closer to "one of a few dozen running bots" than "a person deciding to target you."</span></div>
+    </li>
+  </ol>
+
+  <div class="footer-bar"><span>Watching the Internet Knock — SSH/RDP Honeypot Study</span><span>9</span></div>
+</section>
+
+<!-- ============ PAGE 8b — LIMITATIONS & CODE ============ -->
+<section class="page">
+  <div class="kicker">07 · Key Takeaways (continued)</div>
+  <h2>Limitations &amp; where to find everything</h2>
+
+  <h3>Limitations</h3>
+  <div class="caveat">
+    <ul style="margin:0;">
+      <li>A single ~25-hour window on one cloud provider, one region, and one IP — traffic volume and mix will vary with time, provider, and IP reputation/history.</li>
+      <li>Deny-all authentication was a deliberate choice to maximize distinct credentials captured — it means <strong>no post-login behavior</strong> (commands run, payloads dropped) was observed. That's a natural next study, run as a separate, clearly-scoped instance.</li>
+      <li>Country/ISP attribution is IP geolocation, which reflects hosting infrastructure, not necessarily the operator's actual location.</li>
+      <li>RDP's NLA/CredSSP design means most "password" data captured is either absent (pre-auth username only) or an offline-crackable hash, not a verified plaintext credential.</li>
+    </ul>
+  </div>
+
+  <h3>Code &amp; full methodology</h3>
+  <p style="font-size:9.5pt;">The full source — provisioning scripts, honeypot configuration, and the analysis pipeline used to produce every number in this report — is public:</p>
+  <p style="font-size:11pt; font-weight:650;"><a href="https://github.com/tomershapira103/Honeypot">github.com/tomershapira103/Honeypot</a></p>
+
+  <div class="footer-bar"><span>Watching the Internet Knock — SSH/RDP Honeypot Study</span><span>10</span></div>
+</section>
+
+</body>
+</html>
